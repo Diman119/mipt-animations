@@ -56,20 +56,13 @@ std::vector<Bone> create_skeleton(const aiMesh *mesh, const aiScene *scene)
   // Build hierarchy of nodes from scene root
   // For each bone, find corresponding node in the scene hierarchy and set parent index
   if (scene && scene->mRootNode) {
-    // Collect all nodes that correspond to bones
-    std::vector<aiNode *> bone_nodes;
-    bone_nodes.reserve(numBones);
     for (int i = 0; i < numBones; i++) {
       const aiBone *bone = mesh->mBones[i];
-      aiNode *node = scene->mRootNode->FindNode(aiString(bone->mName));
-      if (node) {
-        bone_nodes.push_back(node);
+      aiNode *node = bone->mNode;
+      if (!node) {
+        continue;
       }
-    }
 
-    // For each bone node, find its parent in the bone_nodes list
-    for (size_t i = 0; i < bone_nodes.size(); i++) {
-      aiNode *node = bone_nodes[i];
       int parent_idx = -1;
 
       // Find parent node in the hierarchy
@@ -177,7 +170,7 @@ ModelAsset load_model(const char *path)
 {
 
   Assimp::Importer importer;
-  // importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
+  importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
   importer.SetPropertyFloat(AI_CONFIG_GLOBAL_SCALE_FACTOR_KEY, 1.f);
 
   importer.ReadFile(path, aiProcess_Triangulate | aiProcess_LimitBoneWeights |

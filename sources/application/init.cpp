@@ -52,12 +52,20 @@ void application_init(Scene &scene)
 
   ModelAsset motusMan = load_model(PROJECT_DIR "resources/MotusMan_v55/MotusMan_v55.fbx");
   // ModelAsset ruby = load_model(PROJECT_DIR "resources/sketchfab/ruby.fbx");
+  ModelAsset cat = load_model(PROJECT_DIR "resources/cat/cat.fbx");
 
   scene.characters.emplace_back(Character{
     "MotusMan_v55",
     glm::identity<glm::mat4>(),
     motusMan.meshes,
-    std::move(weightVisualizationMaterial)
+    weightVisualizationMaterial
+  });
+
+  scene.characters.emplace_back(Character{
+    "Cute Cat",
+    glm::identity<mat4>(),
+    cat.meshes,
+    weightVisualizationMaterial
   });
 
 
@@ -70,6 +78,7 @@ void application_init(Scene &scene)
 
   scene.models.push_back(std::move(motusMan));
   // scene.models.push_back(std::move(ruby));
+  scene.models.push_back(std::move(cat));
 
   std::fflush(stdout);
 }

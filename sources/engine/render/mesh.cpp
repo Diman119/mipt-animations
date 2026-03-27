@@ -3,6 +3,10 @@
 
 #include "api.h"
 #include "glad/glad.h"
+#include "shader.h"
+
+// Skeleton shader for rendering bone lines
+static ShaderPtr skeletonShader;
 
 static void create_indices(std::span<const uint32_t> indices)
 {
@@ -83,10 +87,24 @@ MeshPtr make_plane_mesh()
   return create_mesh("plane", indices, vertices, normals, uv);
 }
 
+static void init_skeleton_shader()
+{
+  if (!skeletonShader) {
+    skeletonShader = compile_shader("skeleton",
+      "/home/diman119/Projects/Animations2026/sources/shaders/vertex_color_vs.glsl",
+      "/home/diman119/Projects/Animations2026/sources/shaders/vertex_color_ps.glsl");
+  }
+}
+
 void render_skeleton(const MeshPtr &mesh, const mat4 &transform, const mat4 &cameraProjView)
 {
   if (!mesh || mesh->skeleton.empty())
     return;
+
+  init_skeleton_shader();
+  skeletonShader->use();
+  skeletonShader->set_mat4x4("Transform", transform);
+  skeletonShader->set_mat4x4("ViewProjection", cameraProjView);
 
   // Calculate world space transforms for all bones
   std::vector<mat4> boneWorldTransforms;
@@ -107,42 +125,107 @@ void render_skeleton(const MeshPtr &mesh, const mat4 &transform, const mat4 &cam
     }
   }
 
-  // Update VBO with current frame bone positions
-  std::vector<vec3> linePositions;
-  linePositions.reserve(mesh->skeleton.size() * 2);
+  // Helper lambda to upload and draw lines with specific color
+  auto draw_lines_with_color = [&](const std::vector<vec3> &linePositions, const vec3 &color) {
+    skeletonShader->set_vec3("Color", color);
 
-  for (size_t i = 0; i < mesh->skeleton.size(); i++)
-  {
-    const Bone &bone = mesh->skeleton[i];
-    int parent_idx = bone.parent_idx;
+    // Upload positions to VBO
+    glBindBuffer(GL_ARRAY_BUFFER, mesh->skeletonVBO);
+    glBufferData(GL_ARRAY_BUFFER, linePositions.size() * sizeof(vec3), linePositions.data(), GL_DYNAMIC_DRAW);
 
-    vec4 childPosWorld = boneWorldTransforms[i] * vec4(0, 0, 0, 1);
-    vec4 parentPosWorld;
-
-    if (parent_idx >= 0)
-      parentPosWorld = boneWorldTransforms[parent_idx] * vec4(0, 0, 0, 1);
-    else
-      parentPosWorld = vec4(0, 0, 0, 1);
-
-    linePositions.emplace_back(parentPosWorld);
-    linePositions.emplace_back(childPosWorld);
-  }
-
-  // Upload positions to VBO
-  glBindBuffer(GL_ARRAY_BUFFER, mesh->skeletonVBO);
-  glBufferData(GL_ARRAY_BUFFER, linePositions.size() * sizeof(vec3), linePositions.data(), GL_DYNAMIC_DRAW);
+    // Bind VAO and draw
+    glBindVertexArray(mesh->skeletonVAO);
+    glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(linePositions.size()));
+  };
 
   // Enable depth mask disable and depth test disable for lines
   glDepthMask(GL_FALSE);
   glDisable(GL_DEPTH_TEST);
 
   // Enable line rendering
-  glLineWidth(2.0f);
+  glLineWidth(1.0f);
   glEnable(GL_LINE_SMOOTH);
 
-  // Bind VAO and draw
-  glBindVertexArray(mesh->skeletonVAO);
-  glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(linePositions.size()));
+  std::vector<vec3> linePositions;
+  linePositions.reserve(mesh->skeleton.size() * 2);
+
+  // X axis - Red (local X direction)
+  {
+    linePositions.clear();
+
+    for (size_t i = 0; i < mesh->skeleton.size(); i++)
+    {
+      const mat4 &worldTransform = boneWorldTransforms[i];
+
+      vec4 originWorld = worldTransform * vec4(0, 0, 0, 1);
+      vec4 endPointWorld = worldTransform * vec4(0.05f, 0, 0, 1);
+
+      linePositions.emplace_back(originWorld);
+      linePositions.emplace_back(endPointWorld);
+    }
+
+    draw_lines_with_color(linePositions, vec3(1.0f, 0.0f, 0.0f));
+  }
+
+  // Y axis - Green (local Y direction)
+  {
+    linePositions.clear();
+
+    for (size_t i = 0; i < mesh->skeleton.size(); i++)
+    {
+      const mat4 &worldTransform = boneWorldTransforms[i];
+
+      vec4 originWorld = worldTransform * vec4(0, 0, 0, 1);
+      vec4 endPointWorld = worldTransform * vec4(0, 0.05f, 0, 1);
+
+      linePositions.emplace_back(originWorld);
+      linePositions.emplace_back(endPointWorld);
+    }
+
+    draw_lines_with_color(linePositions, vec3(0.0f, 1.0f, 0.0f));
+  }
+
+  // Z axis - Blue (local Z direction)
+  {
+    linePositions.clear();
+
+    for (size_t i = 0; i < mesh->skeleton.size(); i++)
+    {
+      const mat4 &worldTransform = boneWorldTransforms[i];
+
+      vec4 originWorld = worldTransform * vec4(0, 0, 0, 1);
+      vec4 endPointWorld = worldTransform * vec4(0, 0, 0.05f, 1);
+
+      linePositions.emplace_back(originWorld);
+      linePositions.emplace_back(endPointWorld);
+    }
+
+    draw_lines_with_color(linePositions, vec3(0.0f, 0.0f, 1.0f));
+  }
+
+  // Parent lines - Yellow
+  {
+    linePositions.clear();
+
+    for (size_t i = 0; i < mesh->skeleton.size(); i++)
+    {
+      const Bone &bone = mesh->skeleton[i];
+      int parent_idx = bone.parent_idx;
+
+      vec4 childPosWorld = boneWorldTransforms[i] * vec4(0, 0, 0, 1);
+      vec4 parentPosWorld;
+
+      if (parent_idx >= 0)
+        parentPosWorld = boneWorldTransforms[parent_idx] * vec4(0, 0, 0, 1);
+      else
+        parentPosWorld = vec4(0, 0, 0, 1);
+
+      linePositions.emplace_back(parentPosWorld);
+      linePositions.emplace_back(childPosWorld);
+    }
+
+    draw_lines_with_color(linePositions, vec3(1.0f, 1.0f, 0.0f));
+  }
 
   // Restore states
   glEnable(GL_DEPTH_TEST);

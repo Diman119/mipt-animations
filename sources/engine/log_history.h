@@ -7,6 +7,7 @@ enum class LogType
 {
   Error,
   Log,
+  Warning,
 };
 
 struct LogItem

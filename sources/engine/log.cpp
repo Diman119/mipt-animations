@@ -19,6 +19,10 @@ void debug_common(const char *fmt, LogType message_type, va_list args)
   {
     fprintf(stdout, "\033[31m%s%s\033[39m\n", logConcat.c_str(), messageBuf);
   }
+  else if (message_type == LogType::Warning)
+  {
+    fprintf(stdout, "\033[33m%s%s\033[39m\n", logConcat.c_str(), messageBuf);
+  }
   else
   {
     fprintf(stdout, "%s%s\n", logConcat.c_str(), messageBuf);
@@ -47,5 +51,13 @@ void engine::log(const char *fmt, ...)
   va_list args;
   va_start(args, fmt);
   debug_common(fmt, LogType::Log, args);
+  va_end(args);
+}
+
+void engine::warning(const char *fmt, ...)
+{
+  va_list args;
+  va_start(args, fmt);
+  debug_common(fmt, LogType::Warning, args);
   va_end(args);
 }

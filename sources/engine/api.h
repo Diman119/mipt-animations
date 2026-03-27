@@ -37,6 +37,9 @@ namespace engine
   // log white message into console
   void log(const char *format, ...);
 
+  // log yellow message into console
+  void warning(const char *format, ...);
+
   // INPUT SUBSYSTEM //
 
   // Event for keyboard input

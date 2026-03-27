@@ -63,7 +63,7 @@ void application_init(Scene &scene)
 
   scene.characters.emplace_back(Character{
     "Cute Cat",
-    glm::identity<mat4>(),
+    glm::translate(glm::identity<glm::mat4>(), glm::vec3(2.f, 0.f, 0.f)),
     cat.meshes,
     weightVisualizationMaterial
   });

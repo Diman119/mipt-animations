@@ -1,5 +1,7 @@
 #include "mesh.h"
 #include <vector>
+
+#include "api.h"
 #include "glad/glad.h"
 
 static void create_indices(std::span<const uint32_t> indices)
@@ -79,4 +81,70 @@ MeshPtr make_plane_mesh()
   std::vector<vec3> normals(4, vec3(0, 1, 0));
   std::vector<vec2> uv = {vec2(0, 0), vec2(1, 0), vec2(1, 1), vec2(0, 1)};
   return create_mesh("plane", indices, vertices, normals, uv);
+}
+
+void render_skeleton(const MeshPtr &mesh, const mat4 &transform, const mat4 &cameraProjView)
+{
+  if (!mesh || mesh->skeleton.empty())
+    return;
+
+  // Calculate world space transforms for all bones
+  std::vector<mat4> boneWorldTransforms;
+  boneWorldTransforms.reserve(mesh->skeleton.size());
+
+  for (size_t i = 0; i < mesh->skeleton.size(); i++)
+  {
+    const Bone &bone = mesh->skeleton[i];
+
+    if (bone.parent_idx < 0)
+    {
+      boneWorldTransforms.push_back(bone.transform);
+    }
+    else
+    {
+      const mat4 &parentTransform = boneWorldTransforms[bone.parent_idx];
+      boneWorldTransforms.push_back(parentTransform * bone.transform);
+    }
+  }
+
+  // Update VBO with current frame bone positions
+  std::vector<vec3> linePositions;
+  linePositions.reserve(mesh->skeleton.size() * 2);
+
+  for (size_t i = 0; i < mesh->skeleton.size(); i++)
+  {
+    const Bone &bone = mesh->skeleton[i];
+    int parent_idx = bone.parent_idx;
+
+    vec4 childPosWorld = boneWorldTransforms[i] * vec4(0, 0, 0, 1);
+    vec4 parentPosWorld;
+
+    if (parent_idx >= 0)
+      parentPosWorld = boneWorldTransforms[parent_idx] * vec4(0, 0, 0, 1);
+    else
+      parentPosWorld = vec4(0, 0, 0, 1);
+
+    linePositions.emplace_back(parentPosWorld);
+    linePositions.emplace_back(childPosWorld);
+  }
+
+  // Upload positions to VBO
+  glBindBuffer(GL_ARRAY_BUFFER, mesh->skeletonVBO);
+  glBufferData(GL_ARRAY_BUFFER, linePositions.size() * sizeof(vec3), linePositions.data(), GL_DYNAMIC_DRAW);
+
+  // Enable depth mask disable and depth test disable for lines
+  glDepthMask(GL_FALSE);
+  glDisable(GL_DEPTH_TEST);
+
+  // Enable line rendering
+  glLineWidth(2.0f);
+  glEnable(GL_LINE_SMOOTH);
+
+  // Bind VAO and draw
+  glBindVertexArray(mesh->skeletonVAO);
+  glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(linePositions.size()));
+
+  // Restore states
+  glEnable(GL_DEPTH_TEST);
+  glDepthMask(GL_TRUE);
 }

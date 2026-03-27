@@ -17,15 +17,15 @@ void debug_common(const char *fmt, LogType message_type, va_list args)
 
   if (message_type == LogType::Error)
   {
-    fprintf(stdout, "\033[31m%s%s\033[39m\n", logConcat.c_str(), messageBuf);
+    fprintf(stdout, "\033[31m%s%s\033[39m\n", timeBuf, messageBuf);
   }
   else if (message_type == LogType::Warning)
   {
-    fprintf(stdout, "\033[33m%s%s\033[39m\n", logConcat.c_str(), messageBuf);
+    fprintf(stdout, "\033[33m%s%s\033[39m\n", timeBuf, messageBuf);
   }
   else
   {
-    fprintf(stdout, "%s%s\n", logConcat.c_str(), messageBuf);
+    fprintf(stdout, "%s%s\n", timeBuf, messageBuf);
   }
 
   {

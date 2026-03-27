@@ -1,5 +1,8 @@
 
 #include "scene.h"
+#include "engine/render/mesh.h"
+#include <vector>
+#include <glad/glad.h>
 
 void render_character(const Character &character, const mat4 &cameraProjView, vec3 cameraPosition, const DirectionLight &light)
 {
@@ -17,6 +20,12 @@ void render_character(const Character &character, const mat4 &cameraProjView, ve
 
   for (const MeshPtr &mesh : character.meshes) {
     render(mesh);
+  }
+
+  // glUseProgram(0);
+
+  for (const MeshPtr &mesh : character.meshes) {
+    render_skeleton(mesh, character.transform, cameraProjView);
   }
 }
 

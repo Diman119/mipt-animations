@@ -42,43 +42,26 @@ std::vector<Bone> create_skeleton(const aiMesh *mesh, const aiScene *scene)
   int numBones = mesh->mNumBones;
   skeleton.resize(numBones);
 
-  // Map bone name to index
-  std::map<std::string, int> bone_name_to_idx;
+  std::unordered_map<std::string, int> boneNameToIdx;
   for (int i = 0; i < numBones; i++)
   {
     const aiBone *bone = mesh->mBones[i];
-    bone_name_to_idx[std::string(bone->mName.C_Str())] = i;
-
     skeleton[i].name = std::string(bone->mName.C_Str());
-    assimp_matrix_to_glm(bone->mOffsetMatrix, skeleton[i].transform);
+    boneNameToIdx[skeleton[i].name] = i;
+    assimp_matrix_to_glm(bone->mNode->mTransformation, skeleton[i].transform);
   }
 
-  // Build hierarchy of nodes from scene root
-  // For each bone, find corresponding node in the scene hierarchy and set parent index
-  if (scene && scene->mRootNode) {
-    for (int i = 0; i < numBones; i++) {
-      const aiBone *bone = mesh->mBones[i];
-      aiNode *node = bone->mNode;
-      if (!node) {
-        continue;
-      }
+  for (int i = 0; i < numBones; i++) {
+    const aiBone *bone = mesh->mBones[i];
+    aiNode *parentNode = bone->mNode->mParent;
 
-      int parent_idx = -1;
-
-      // Find parent node in the hierarchy
-      aiNode *current = node->mParent;
-      while (current) {
-        // Check if parent is one of the bones in this mesh
-        auto it = bone_name_to_idx.find(std::string(current->mName.C_Str()));
-        if (it != bone_name_to_idx.end()) {
-          parent_idx = it->second;
-          break;
-        }
-        current = current->mParent;
-      }
-
-      skeleton[i].parent_idx = parent_idx;
-    }
+    if (!parentNode)
+      skeleton[i].parent_idx = -1;
+    else if (auto it = boneNameToIdx.find(std::string(parentNode->mName.C_Str()));
+      it == boneNameToIdx.end())
+      skeleton[i].parent_idx = -1;
+    else
+      skeleton[i].parent_idx = it->second;
   }
 
   validate_skeleton_hierarchy(skeleton);
@@ -130,8 +113,6 @@ MeshPtr create_mesh(const aiMesh *mesh, const aiScene *scene)
       uv[i] = to_vec2(mesh->mTextureCoords[0][i]);
   }
 
-  std::vector<Bone> skeleton = create_skeleton(mesh, scene);
-
   if (mesh->HasBones())
   {
     weights.resize(numVert, vec4(0.f));
@@ -161,7 +142,25 @@ MeshPtr create_mesh(const aiMesh *mesh, const aiScene *scene)
     }
   }
 
+  std::vector<Bone> skeleton = create_skeleton(mesh, scene);
   auto mesh_ptr = create_mesh(mesh->mName.C_Str(), indices, vertices, normals, uv, weights, weightsIndex);
+
+  // Create skeleton line rendering buffers
+  if (!skeleton.empty()) {
+    // Generate VAO and VBO
+    glGenVertexArrays(1, &mesh_ptr->skeletonVAO);
+    glGenBuffers(1, &mesh_ptr->skeletonVBO);
+
+    glBindVertexArray(mesh_ptr->skeletonVAO);
+
+    // Position attribute (vec3)
+    glBindBuffer(GL_ARRAY_BUFFER, mesh_ptr->skeletonVBO);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glBindVertexArray(0);
+  }
+
   mesh_ptr->skeleton = std::move(skeleton);
   return mesh_ptr;
 }

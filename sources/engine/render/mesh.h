@@ -16,6 +16,10 @@ struct Mesh
   const int numIndices;
   std::vector<Bone> skeleton;
 
+  // Skeleton line rendering
+  uint32_t skeletonVAO = 0;
+  uint32_t skeletonVBO = 0;
+
   Mesh(const char *name, uint32_t vertexArrayBufferObject, int numIndices) :
     name(name),
     vertexArrayBufferObject(vertexArrayBufferObject),
@@ -44,3 +48,4 @@ MeshPtr create_mesh(
 MeshPtr make_plane_mesh();
 
 void render(const MeshPtr &mesh);
+void render_skeleton(const MeshPtr &mesh, const mat4 &transform, const mat4 &cameraProjView);

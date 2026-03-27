@@ -47,7 +47,7 @@ void application_init(Scene &scene)
   const uint8_t whiteColor[4] = {255, 255, 255, 255};
   whiteMaterial->set_property("mainTex", create_texture2d(whiteColor, 1, 1, 4));
 
-  auto weightVisualizationMaterial = make_material("weightVisualization", PROJECT_DIR "sources/shaders/weight_visualization_vs.glsl", PROJECT_DIR "sources/shaders/weight_visualization_ps.glsl");
+  auto weightVisualizationMaterial = make_material("weightVisualization", PROJECT_DIR "sources/shaders/weight_visualization_vs.glsl", PROJECT_DIR "sources/shaders/vertex_color_ps.glsl");
 
 
   ModelAsset motusMan = load_model(PROJECT_DIR "resources/MotusMan_v55/MotusMan_v55.fbx");

@@ -5,8 +5,6 @@ struct VsOutput
   vec3 VertexColor;
 };
 
-uniform vec3 CameraPosition;
-
 in VsOutput vsOutput;
 out vec4 FragColor;
 
